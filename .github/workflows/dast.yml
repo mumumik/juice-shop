@@ -57,12 +57,29 @@ jobs:
       # Wait Until Finished
       ###########################################################
 
-      - name: Wait for Scan Completion
+      - name: Wait for DAST Completion
         shell: bash
         run: |
-          veracode dynamic status \
-            --webhook "$VERACODE_TARGET_ID" \
-            --analysis-run-id "${{ steps.start_scan.outputs.run_id }}"
+          for i in {1..60}; do
+
+            OUTPUT=$(veracode dynamic status \
+              --webhook "$VERACODE_TARGET_ID" \
+              --analysis-run-id "${{ steps.start_scan.outputs.run_id }}")
+
+            echo "$OUTPUT"
+
+            if echo "$OUTPUT" | grep -qi "completed"; then
+              echo "Scan completed"
+              exit 0
+            fi
+
+            echo "Waiting 30 seconds..."
+            sleep 30
+
+          done
+
+          echo "Timeout waiting for scan"
+          exit 1
 
       ###########################################################
       # Download JSON Result
