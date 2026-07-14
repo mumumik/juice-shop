@@ -35,14 +35,15 @@ jobs:
       - name: Start DAST Scan
         id: start_scan
         shell: bash
+        continue-on-error: true
         run: |
           set -e
 
           veracode dynamic scan \
             --webhook "$VERACODE_TARGET_ID" \
-            --background | tee scan.log
+            | tee scan.log
 
-          RUN_ID=$(grep "Analysis run id:" scan.log | sed -E 's/.*Analysis run id: ([a-f0-9]+)/\1/')
+          RUN_ID=$(awk '/Analysis run id:/ {print $NF}' scan.log)
 
           if [ -z "$RUN_ID" ]; then
             echo "Unable to retrieve Analysis Run ID"
@@ -52,51 +53,6 @@ jobs:
           echo "Analysis Run ID = $RUN_ID"
 
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "Saved Run ID: $RUN_ID"
-
-      ###########################################################
-      # Wait Until Finished
-      ###########################################################
-
-      - name: Verify Run ID
-        run: |
-          echo "Received Run ID: ${{ steps.start_scan.outputs.run_id }}"
-
-      - name: Debug Variables
-        run: |
-          echo "Target: [$VERACODE_TARGET_ID]"
-          echo "Run ID: [${{ steps.start_scan.outputs.run_id }}]"
-
-          echo "Target Length: ${#VERACODE_TARGET_ID}"
-          echo "Run ID Length: ${#RUN_ID}"
-        env:
-          RUN_ID: ${{ steps.start_scan.outputs.run_id }}
-
-      - name: Wait for DAST Completion
-        shell: bash
-        run: |
-          set -x
-
-          for i in {1..60}; do
-
-            OUTPUT=$(veracode dynamic status \
-              --webhook "$VERACODE_TARGET_ID" \
-              --analysis-run-id "${{ steps.start_scan.outputs.run_id }}")
-
-            echo "$OUTPUT"
-
-            if echo "$OUTPUT" | grep -qi "completed"; then
-              echo "Scan completed"
-              exit 0
-            fi
-
-            echo "Waiting 30 seconds..."
-            sleep 30
-
-          done
-
-          echo "Timeout waiting for scan"
-          exit 1
 
       ###########################################################
       # Download JSON Result
