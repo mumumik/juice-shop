@@ -20,6 +20,14 @@ jobs:
       - name: Verify CLI
         run: veracode version
 
+      - name: Check Environment Variables
+        run: |
+          echo "API ID length: ${#VERACODE_API_KEY_ID}"
+          echo "API Secret length: ${#VERACODE_API_KEY_SECRET}"
+        env:
+          VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_KEY_ID }}
+          VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY_SECRET }}
+
       - name: Run Veracode DAST
         env:
           VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_KEY_ID }}
