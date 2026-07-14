@@ -15,6 +15,10 @@ jobs:
       - name: Install Veracode CLI
         run: |
           curl -fsS https://tools.veracode.com/veracode-cli/install | sh
+          echo "$HOME/.veracode" >> $GITHUB_PATH
+
+      - name: Verify CLI
+        run: veracode version
 
       - name: Run Veracode DAST
         env:
