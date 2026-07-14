@@ -1,0 +1,28 @@
+name: Veracode DAST
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - master
+
+jobs:
+  dast:
+    runs-on: ubuntu-latest
+
+    env:
+      VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_ID }}
+      VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY }}
+      VERACODE_TARGET_ID: ${{ secrets.VERACODE_TARGET_ID }}
+
+    steps:
+      - name: Veracode DAST Essentials Action Step
+        id: veracode
+        uses: veracode/veracode-dast-essentials-action@v1.0.2
+        with:
+          VERACODE_WEBHOOK: '${{ secrets.VERACODE_TARGET_ID }}'
+          VERACODE_SECRET_ID: '${{ secrets.VERACODE_API_ID }}'
+          VERACODE_SECRET_ID_KEY: '${{ secrets.VERACODE_API_KEY }}'
+          REGION: '${{ secrets.REGION }}'
+          pull-report: 'true'
