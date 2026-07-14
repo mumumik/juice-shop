@@ -22,16 +22,16 @@ jobs:
 
       - name: Check Environment Variables
         run: |
-          echo "API ID length: ${#VERACODE_API_KEY_ID}"
-          echo "API Secret length: ${#VERACODE_API_KEY_SECRET}"
+          echo "API ID length: ${#VERACODE_API_ID}"
+          echo "API Secret length: ${#VERACODE_API_KEY}"
         env:
-          VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_KEY_ID }}
-          VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY_SECRET }}
+          VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_ID }}
+          VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY }}
 
       - name: Run Veracode DAST
         env:
-          VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_KEY_ID }}
-          VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY_SECRET }}
+          VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_ID }}
+          VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY }}
           VERACODE_TARGET_ID: ${{ secrets.VERACODE_TARGET_ID }}
         run: |
           veracode dynamic scan \
