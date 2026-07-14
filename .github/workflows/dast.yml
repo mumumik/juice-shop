@@ -1,16 +1,24 @@
 name: Veracode DAST
 
 on:
-  push:
-    branches: master
   workflow_dispatch:
+
+  push:
+    branches:
+      - master
 
 jobs:
   dast:
     runs-on: ubuntu-latest
 
+    env:
+      VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_ID }}
+      VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY }}
+      VERACODE_TARGET_ID: ${{ secrets.VERACODE_TARGET_ID }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install Veracode CLI
         run: |
@@ -20,19 +28,78 @@ jobs:
       - name: Verify CLI
         run: veracode version
 
-      - name: Check Environment Variables
-        run: |
-          echo "API ID length: ${#VERACODE_API_ID}"
-          echo "API Secret length: ${#VERACODE_API_KEY}"
-        env:
-          VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_ID }}
-          VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY }}
+      ###########################################################
+      # Start Scan
+      ###########################################################
 
-      - name: Run Veracode DAST
-        env:
-          VERACODE_API_KEY_ID: ${{ secrets.VERACODE_API_ID }}
-          VERACODE_API_KEY_SECRET: ${{ secrets.VERACODE_API_KEY }}
-          VERACODE_TARGET_ID: ${{ secrets.VERACODE_TARGET_ID }}
+      - name: Start DAST Scan
+        id: start_scan
+        shell: bash
         run: |
+          set -e
+
           veracode dynamic scan \
-            --webhook "$VERACODE_TARGET_ID"
+            --webhook "$VERACODE_TARGET_ID" \
+            --background | tee scan.log
+
+          RUN_ID=$(grep "Analysis run id:" scan.log | sed -E 's/.*Analysis run id: ([a-f0-9]+)/\1/')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "Unable to retrieve Analysis Run ID"
+            exit 1
+          fi
+
+          echo "Analysis Run ID = $RUN_ID"
+
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      ###########################################################
+      # Wait Until Finished
+      ###########################################################
+
+      - name: Wait for Scan Completion
+        shell: bash
+        run: |
+          veracode dynamic status \
+            --webhook "$VERACODE_TARGET_ID" \
+            --analysis-run-id "${{ steps.start_scan.outputs.run_id }}"
+
+      ###########################################################
+      # Download JSON Result
+      ###########################################################
+
+      - name: Download JSON Report
+        continue-on-error: true
+        run: |
+          veracode dynamic results \
+            --webhook "$VERACODE_TARGET_ID" \
+            --analysis-run-id "${{ steps.start_scan.outputs.run_id }}" \
+            --format json \
+            --output results.json
+
+      ###########################################################
+      # Download PDF Report
+      ###########################################################
+
+      - name: Download PDF Report
+        continue-on-error: true
+        run: |
+          veracode dynamic results \
+            --webhook "$VERACODE_TARGET_ID" \
+            --analysis-run-id "${{ steps.start_scan.outputs.run_id }}" \
+            --format pdf \
+            --output report.pdf
+
+      ###########################################################
+      # Upload Artifact
+      ###########################################################
+
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veracode-dast
+          path: |
+            scan.log
+            results.json
+            report.pdf
